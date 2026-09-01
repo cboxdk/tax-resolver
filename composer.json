@@ -1,0 +1,51 @@
+{
+    "name": "cboxdk/tax-resolver",
+    "description": "Pure address→jurisdiction resolver over the Cbox Tax boundary dataset. No framework, no I/O, no geocoder — the shared brain the register verifies with and the tax engines resolve with.",
+    "type": "library",
+    "keywords": ["tax", "sales-tax", "vat", "jurisdiction", "boundary", "geocoding", "address", "cadastre"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Cbox",
+            "homepage": "https://github.com/cboxdk"
+        }
+    ],
+    "require": {
+        "php": "^8.4"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.30",
+        "pestphp/pest": "^5.1",
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cboxdk\\TaxResolver\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cboxdk\\TaxResolver\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "lint": "pint",
+        "test:lint": "pint --test",
+        "test:types": "phpstan analyse",
+        "test:unit": "pest",
+        "test": [
+            "@test:lint",
+            "@test:types",
+            "@test:unit"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
