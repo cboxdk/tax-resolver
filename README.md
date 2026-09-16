@@ -63,14 +63,38 @@ $address = new ParsedAddress(
 
 $assignment = new Resolver()->resolve($address, $data /*, $geometry */);
 
-$assignment->authorities; // ['001'] — the taxing authority codes that apply
+$assignment->authorities; // list<Authority>, or null — see below
 $assignment->method;      // Method::StreetRange
 $assignment->confidence;  // Confidence::Exact
+
+foreach ($assignment->authorities ?? [] as $authority) {
+    $authority->level;  // 'state' | 'county' | 'city' | 'district'
+    $authority->code;   // the code the source files it under, verbatim
+    $authority->type;   // the state's own district-type code, where it states one
+    $authority->key();  // 'county:209' — identity is level AND code
+}
 ```
 
-The authority codes join to the rate data by `{stateFips, level, jurisdictionCode}`;
-computing the combined rate (and applying category, sourcing and holiday rules) is the
-engine's job, not this package's.
+An authority joins to the rate data by `{stateFips, level, code}`. Match on **both**
+halves: a county and a special district can file under the same number and levy
+separately, so matching on the bare code merges two bodies that each want their own
+share. Computing the combined rate (and applying category, sourcing and holiday rules)
+is the engine's job, not this package's.
+
+### null is not the same as an empty list
+
+`authorities` of `null` means no layer answered — the dataset is silent here, and the
+caller falls back to the state rate. An **empty list** means a layer answered "no local
+authority levies here", which is an answer. They are one keystroke apart and cost money
+in opposite directions; use `$assignment->resolved()` rather than checking emptiness.
+
+### Format versions
+
+The postal artifacts are `formatVersion` 3 and the geometry artifact 2; they version
+independently. An artifact written to a version this package does not implement throws
+`UnsupportedFormatVersion` rather than reading what it can. That is deliberate: a
+partially-read set is indistinguishable from "no local tax here", which is a wrong
+answer with no error attached to it.
 
 ## What it does not do
 
