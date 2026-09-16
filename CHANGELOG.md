@@ -2,6 +2,31 @@
 
 All notable changes to this package are documented here.
 
+## v1.0.0
+
+The API is settled. No code changed from v0.2.0 — what changed is the commitment:
+`Authority`, `JurisdictionAssignment`, `BoundaryData`, `Geometry` and `Resolver` are
+now stable surface, and a breaking change to any of them needs a v2.
+
+That commitment is worth making now because the shape has been used rather than
+merely published. `cboxdk/laravel-tax` resolves US addresses through this package,
+and the register's own conformance deck — addresses in, expected authority set out,
+cut from the artifacts a release actually ships — passes through it. Two readers of
+one format drifting apart is the failure this package exists to prevent, and it is
+the failure v0.1.0 shipped; a deck that both sides run is the only thing that proves
+they have not.
+
+### What a consumer commits to
+
+- An authority is identified by **level AND code**. A county and a special district
+  can file under the same number and levy separately.
+- **`null` is not `[]`.** Null means no layer answered and the caller falls back to
+  the state rate; an empty list means a row answered "no local authority levies
+  here". Use `resolved()`.
+- **An unknown `formatVersion` throws.** A version this code cannot read has to stop,
+  because the alternative is a confident answer that is wrong in the direction nobody
+  audits.
+
 ## v0.2.0
 
 ### Fixed — formatVersion 3 was read as if it were v2, and answered empty
