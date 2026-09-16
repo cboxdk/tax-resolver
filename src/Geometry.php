@@ -15,6 +15,12 @@ namespace Cboxdk\TaxResolver;
 readonly class Geometry
 {
     /**
+     * The geometry wire format this reader implements. The postal layers version
+     * independently of this one, and they are currently at 3.
+     */
+    public const array SUPPORTED = [2];
+
+    /**
      * @param  list<AuthorityShape>  $shapes
      */
     public function __construct(
@@ -22,7 +28,15 @@ readonly class Geometry
     ) {}
 
     /**
-     * @return list<string>
+     * Every authority whose ground contains the point.
+     *
+     * This layer names the register's OWN jurisdiction code in `properties.authority`
+     * (`us:CA:CITY-ALAMEDA`), not a code in the state's space, so the answer joins to a
+     * rate directly — all 558 of California's features match a jurisdiction that carries
+     * one. That is why {@see Authority::named()} fills `jurisdiction` here and the
+     * postal layers leave it null.
+     *
+     * @return list<Authority>
      */
     public function authoritiesAt(Point $point): array
     {
@@ -30,7 +44,7 @@ readonly class Geometry
 
         foreach ($this->shapes as $shape) {
             if ($shape->contains($point)) {
-                $authorities[] = $shape->authority;
+                $authorities[] = Authority::named($shape->authority, $shape->level);
             }
         }
 
@@ -39,9 +53,18 @@ readonly class Geometry
 
     /**
      * @param  array<string, mixed>  $json  a decoded GeoJSON FeatureCollection
+     *
+     * @throws UnsupportedFormatVersion When the collection is written to a version this
+     *                                  reader does not implement.
      */
     public static function fromFeatureCollection(array $json): self
     {
+        $version = $json['formatVersion'] ?? null;
+
+        if (! is_int($version) || ! in_array($version, self::SUPPORTED, true)) {
+            throw UnsupportedFormatVersion::for('geometry', $version, self::SUPPORTED);
+        }
+
         $features = $json['features'] ?? null;
         $shapes = [];
 
