@@ -18,7 +18,7 @@ readonly class Geometry
      * The geometry wire format this reader implements. The postal layers version
      * independently of this one, and they are currently at 3.
      */
-    public const array SUPPORTED = [2];
+    public const array SUPPORTED = [2, 3];
 
     /**
      * @param  list<AuthorityShape>  $shapes
@@ -28,7 +28,8 @@ readonly class Geometry
     ) {}
 
     /**
-     * Every authority whose ground contains the point.
+     * Every authority whose ground contains the point — except one that another
+     * authority over the same point stands in place of (`replaces`, geometry v3).
      *
      * This layer names the register's OWN jurisdiction code in `properties.authority`
      * (`us:CA:CITY-ALAMEDA`), not a code in the state's space, so the answer joins to a
@@ -40,10 +41,20 @@ readonly class Geometry
      */
     public function authoritiesAt(Point $point): array
     {
+        $over = array_values(array_filter($this->shapes, static fn (AuthorityShape $shape): bool => $shape->contains($point)));
+
+        // v3: an authority another one here stands in place of is not charged beside it.
+        $replaced = [];
+        foreach ($over as $shape) {
+            foreach ($shape->replaces as $code) {
+                $replaced[$code] = true;
+            }
+        }
+
         $authorities = [];
 
-        foreach ($this->shapes as $shape) {
-            if ($shape->contains($point)) {
+        foreach ($over as $shape) {
+            if (! isset($replaced[$shape->authority])) {
                 $authorities[] = Authority::named($shape->authority, $shape->level);
             }
         }
@@ -87,6 +98,7 @@ readonly class Geometry
                 self::text($properties['level'] ?? ''),
                 self::text($properties['name'] ?? ''),
                 $polygons,
+                $version >= 3 ? self::codes($properties['replaces'] ?? []) : [],
             );
         }
 
@@ -155,6 +167,29 @@ readonly class Geometry
         }
 
         return $points;
+    }
+
+    /**
+     * A v3 `replaces` list. Anything but a list of codes is refused: a list half read is
+     * a city charged beside the combination that replaced it.
+     *
+     * @return list<string>
+     */
+    private static function codes(mixed $value): array
+    {
+        if (! is_array($value) || ! array_is_list($value)) {
+            throw new \InvalidArgumentException('A geometry `replaces` must be a list of authority codes.');
+        }
+
+        $codes = [];
+        foreach ($value as $code) {
+            if (! is_string($code) || $code === '') {
+                throw new \InvalidArgumentException('A geometry `replaces` must be a list of authority codes.');
+            }
+            $codes[] = $code;
+        }
+
+        return $codes;
     }
 
     private static function text(mixed $value): string

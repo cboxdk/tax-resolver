@@ -72,3 +72,36 @@ it('refuses a geometry version it does not implement', function (): void {
     expect(fn () => Geometry::fromFeatureCollection(['features' => []]))
         ->toThrow(UnsupportedFormatVersion::class);
 });
+
+it('drops what a combined area stands in place of, and nothing else (v3)', function (): void {
+    // Texas: a combined area where a city and a district overlap has its own code, used
+    // INSTEAD of theirs. Bee Cave city 2%, Travis ESD 10 1.5%; the combination 1.5%
+    // plus the library district its row keeps, 0.5%. Summed without this: 5.5%.
+    $square = static fn (int $a, int $b): array => ['type' => 'Polygon', 'coordinates' => [[[$a, $a], [$a, $b], [$b, $b], [$b, $a], [$a, $a]]]];
+    $geo = Geometry::fromFeatureCollection([
+        'formatVersion' => 3,
+        'features' => [
+            ['properties' => ['authority' => 'us:TX:CITY-2227150', 'level' => 'city', 'name' => 'Bee Cave'], 'geometry' => $square(0, 10)],
+            ['properties' => ['authority' => 'us:TX:DISTRICT-5227702', 'level' => 'district', 'name' => 'Travis Co ESD 10'], 'geometry' => $square(4, 20)],
+            ['properties' => ['authority' => 'us:TX:DISTRICT-5227506', 'level' => 'district', 'name' => 'Westbank Library Dist'], 'geometry' => $square(0, 20)],
+            ['properties' => ['authority' => 'us:TX:DISTRICT-6227025', 'level' => 'district', 'name' => 'Bee Cave/Travis ESD No 10',
+                'replaces' => ['us:TX:CITY-2227150', 'us:TX:DISTRICT-5227702']], 'geometry' => $square(4, 10)],
+        ],
+    ]);
+
+    // Inside the combination: the combination and the library, not the city or the ESD.
+    expect(named($geo->authoritiesAt(new Point(5.0, 5.0))))->toBe(['us:TX:DISTRICT-5227506', 'us:TX:DISTRICT-6227025'])
+        // In the city outside the ESD: the city and the library, untouched.
+        ->and(named($geo->authoritiesAt(new Point(2.0, 2.0))))->toBe(['us:TX:CITY-2227150', 'us:TX:DISTRICT-5227506'])
+        // In the ESD outside the city: the ESD and the library.
+        ->and(named($geo->authoritiesAt(new Point(15.0, 15.0))))->toBe(['us:TX:DISTRICT-5227702', 'us:TX:DISTRICT-5227506']);
+});
+
+it('ignores replaces in a v2 file and refuses a malformed one in v3', function (): void {
+    $feature = static fn (mixed $replaces): array => ['properties' => ['authority' => 'A', 'level' => 'city', 'name' => 'A', 'replaces' => $replaces],
+        'geometry' => ['type' => 'Polygon', 'coordinates' => [[[0, 0], [0, 2], [2, 2], [2, 0], [0, 0]]]]];
+
+    expect(Geometry::fromFeatureCollection(['formatVersion' => 2, 'features' => [$feature(['A'])]])->shapes[0]->replaces)->toBe([])
+        ->and(fn () => Geometry::fromFeatureCollection(['formatVersion' => 3, 'features' => [$feature('A')]]))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => Geometry::fromFeatureCollection(['formatVersion' => 3, 'features' => [$feature([1])]]))->toThrow(InvalidArgumentException::class);
+});

@@ -18,6 +18,18 @@ readonly class AuthorityShape
         public string $level,
         public string $name,
         public array $polygons,
+        /**
+         * The authorities this one stands IN PLACE OF where it applies (geometry v3).
+         *
+         * Texas publishes a "combined area" wherever a city and a special district
+         * overlap, with its own code and its own rate, to be used INSTEAD of the city's
+         * and the district's. Every one of those polygons still covers the point, so a
+         * reader that returned all of them would add the city, the district and the
+         * combination together: 5.5% at an address in Bee Cave that owes 2%.
+         *
+         * @var list<string>
+         */
+        public array $replaces = [],
     ) {}
 
     public function contains(Point $point): bool

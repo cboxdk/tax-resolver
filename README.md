@@ -90,8 +90,9 @@ in opposite directions; use `$assignment->resolved()` rather than checking empti
 
 ### Format versions
 
-The postal artifacts are `formatVersion` 3 and the geometry artifact 2; they version
-independently. An artifact written to a version this package does not implement throws
+The postal artifacts are `formatVersion` 3 and the geometry artifacts 2 or 3; they
+version independently. Geometry v3 adds `properties.replaces`: an authority listed there
+is dropped wherever the replacing one also covers the point (Texas's combined areas). An artifact written to a version this package does not implement throws
 `UnsupportedFormatVersion` rather than reading what it can. That is deliberate: a
 partially-read set is indistinguishable from "no local tax here", which is a wrong
 answer with no error attached to it.

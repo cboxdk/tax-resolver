@@ -2,6 +2,21 @@
 
 All notable changes to this package are documented here.
 
+## v1.1.0
+
+### Added — geometry formatVersion 3: an authority may stand IN PLACE OF others
+
+Texas publishes a "combined area" wherever a city and a special district overlap: its
+own code, its own rate, to be used instead of the city's and the district's. All three
+polygons cover the point, so reading every authority over it charged the city, the
+district and the combination together — 5.5% at an address in Bee Cave that owes 2%.
+
+A v3 feature may carry `properties.replaces`, a list of authority codes, and
+`Geometry::authoritiesAt()` drops any of them that another authority over the same point
+replaces. A malformed list throws; `replaces` in a v2 file is ignored. v1.0.0 refuses a
+v3 file outright (`UnsupportedFormatVersion`), which is the safe failure: no local
+answer, never a summed one. v2 files read exactly as before.
+
 ## v1.0.0
 
 The API is settled. No code changed from v0.2.0 — what changed is the commitment:
